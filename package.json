@@ -13,23 +13,40 @@
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
+      {
+        "command": "fileforge.scanWorkspace",
+        "title": "FileForge: Scan Workspace"
+      },
+      {
+        "command": "fileforge.copyStructure",
+        "title": "FileForge: Copy File Structure"
+      },
+      {
+        "command": "fileforge.testParser",
+        "title": "FileForge: Test Parser"
+      },
+      {
+        "command": "fileforge.importStructure",
+        "title": "FileForge: Import File Structure"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
         {
-            "command": "fileforge.scanWorkspace",
-            "title": "FileForge: Scan Workspace"
-        },
-        {
-            "command": "fileforge.copyStructure",
-            "title": "FileForge: Copy File Structure"
-        },
-        {
-            "command": "fileforge.testParser",
-            "title": "FileForge: Test Parser"
-        },
-        {
-            "command": "fileforge.importStructure",
-            "title": "FileForge: Import File Structure"
+          "id": "fileforge",
+          "title": "FileForge",
+          "icon": "$(file-directory)"
         }
-    ]
+      ]
+    },
+    "views": {
+      "fileforge": [
+        {
+          "id": "fileforge.mainView",
+          "name": "FileForge"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",

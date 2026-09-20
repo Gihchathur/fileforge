@@ -3,8 +3,22 @@ import { scanWorkspace } from './tree/scanner';
 import { serializeTree } from './tree/serializer';
 import { filterTree } from './tree/filter';
 import { parseTree } from './tree/parser';
+import { validateTree } from './tree/validator';
+import { createTree } from './tree/creator';
+import { previewTree } from './tree/preview';
+import { showImportPreview } from './preview/importPreview';
+import { FileForgeViewProvider } from './sidebar/fileforgeView';
 
 export function activate(context: vscode.ExtensionContext) {
+
+    const fileForgeProvider =
+        new FileForgeViewProvider();
+
+    const fileForgeView =
+        vscode.window.registerTreeDataProvider(
+            'fileforge.mainView',
+            fileForgeProvider
+        );
 
     const scanCommand = vscode.commands.registerCommand(
         'fileforge.scanWorkspace',
@@ -104,12 +118,71 @@ export function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
+            const validation = validateTree(parsed);
+
+            if (!validation.valid) {
+                vscode.window.showErrorMessage(
+                    `FileForge: Invalid file structure. ${validation.errors[0]}`
+                );
+
+                console.error(
+                    '--- VALIDATION ERRORS ---'
+                );
+
+                console.error(
+                    validation.errors.join('\n')
+                );
+
+                return;
+            }
+
+            const preview = await previewTree(parsed);
+
+            const confirmed = await showImportPreview(
+                context,
+                parsed,
+                preview
+            );
+
+            if (!confirmed) {
+                vscode.window.showInformationMessage(
+                    'FileForge: Import cancelled.'
+                );
+
+                return;
+            }
+
+            try {
+                const result = await createTree(parsed);
+
+                const createdCount = result.created.length;
+                const skippedCount = result.skipped.length;
+
+                vscode.window.showInformationMessage(
+                    `FileForge: Created ${createdCount} item(s). Skipped ${skippedCount} existing item(s).`
+                );
+
+                console.log('--- CREATED ---');
+                console.log(result.created);
+
+                console.log('--- SKIPPED ---');
+                console.log(result.skipped);
+            } catch (error) {
+                const message =
+                    error instanceof Error
+                        ? error.message
+                        : String(error);
+
+                vscode.window.showErrorMessage(
+                    `FileForge: Failed to create structure. ${message}`
+                );
+
+                console.error(error);
+                return;
+            }
+
             console.log('--- IMPORTED TREE ---');
             console.log(JSON.stringify(parsed, null, 2));
-
-            vscode.window.showInformationMessage(
-                `FileForge: Parsed "${parsed.name}" successfully.`
-            );
         }
     );
 
@@ -117,7 +190,8 @@ export function activate(context: vscode.ExtensionContext) {
         scanCommand,
         copyCommand,
         testParserCommand,
-        importCommand
+        importCommand,
+        fileForgeView
     );
 }
 

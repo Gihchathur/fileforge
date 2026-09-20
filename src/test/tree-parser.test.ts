@@ -1,3 +1,4 @@
+import { describe, it } from 'mocha';
 import { parseTree } from '../tree/parser';
 import { serializeTree } from '../tree/serializer';
 import { TreeNode } from '../tree/types';
