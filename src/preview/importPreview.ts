@@ -8,6 +8,8 @@ export function showImportPreview(
     preview: PreviewResult
 ): Promise<boolean> {
     return new Promise(resolve => {
+        let completed = false;
+
         const panel = vscode.window.createWebviewPanel(
             'fileforgeImportPreview',
             'FileForge — Import Preview',
@@ -17,26 +19,42 @@ export function showImportPreview(
             }
         );
 
-        panel.webview.html = getHtml(root, preview);
+        panel.webview.html = getHtml(
+            root,
+            preview
+        );
 
         const disposable =
             panel.webview.onDidReceiveMessage(
                 message => {
                     if (message.command === 'create') {
+                        completed = true;
+
+                        disposable.dispose();
                         panel.dispose();
+
                         resolve(true);
+                        return;
                     }
 
                     if (message.command === 'cancel') {
+                        completed = true;
+
+                        disposable.dispose();
                         panel.dispose();
+
                         resolve(false);
+                        return;
                     }
                 }
             );
 
         panel.onDidDispose(() => {
             disposable.dispose();
-            resolve(false);
+
+            if (!completed) {
+                resolve(false);
+            }
         });
     });
 }
@@ -66,7 +84,30 @@ h1 {
 }
 
 .summary {
-    margin: 16px 0;
+    display: flex;
+    gap: 12px;
+    margin: 20px 0;
+}
+
+.summary-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 6px;
+}
+
+.summary-count {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.create-summary {
+    color: var(--vscode-testing-iconPassed);
+}
+
+.existing-summary {
     color: var(--vscode-descriptionForeground);
 }
 
@@ -139,8 +180,23 @@ button {
 <h1>FileForge — Import Preview</h1>
 
 <div class="summary">
-    ${preview.create.length} item(s) will be created ·
-    ${preview.existing.length} already exist
+    <div class="summary-item create-summary">
+        <span class="summary-count">
+            ${preview.create.length}
+        </span>
+        <span>
+            item(s) will be created
+        </span>
+    </div>
+
+    <div class="summary-item existing-summary">
+        <span class="summary-count">
+            ${preview.existing.length}
+        </span>
+        <span>
+            already exist
+        </span>
+    </div>
 </div>
 
 <div class="tree">

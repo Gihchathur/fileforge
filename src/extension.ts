@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { scanWorkspace } from './tree/scanner';
 import { serializeTree } from './tree/serializer';
 import { filterTree } from './tree/filter';
-import { parseTree } from './tree/parser';
+import { parseAnyTree } from './tree/parseAnyTree';
 import { validateTree } from './tree/validator';
 import { createTree } from './tree/creator';
 import { previewTree } from './tree/preview';
@@ -84,7 +84,7 @@ export function activate(context: vscode.ExtensionContext) {
             console.log('--- SERIALIZED TREE ---');
             console.log(serialized);
 
-            const parsed = parseTree(serialized);
+            const parsed = parseAnyTree(serialized);
 
             console.log('--- PARSED TREE ---');
             console.log(JSON.stringify(parsed, null, 2));
@@ -108,12 +108,19 @@ export function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
-            const parsed = parseTree(text);
+            const parsed = parseAnyTree(text);
 
             if (!parsed) {
-                vscode.window.showErrorMessage(
-                    'FileForge: Could not parse the clipboard content.'
+                const action = await vscode.window.showErrorMessage(
+                    'FileForge: The clipboard content is not a supported file structure.',
+                    'Try Again'
                 );
+
+                if (action === 'Try Again') {
+                    await vscode.commands.executeCommand(
+                        'fileforge.importStructure'
+                    );
+                }
 
                 return;
             }
@@ -121,8 +128,13 @@ export function activate(context: vscode.ExtensionContext) {
             const validation = validateTree(parsed);
 
             if (!validation.valid) {
+                const errorSummary =
+                    validation.errors.length === 1
+                        ? validation.errors[0]
+                        : `${validation.errors.length} validation errors found.`;
+
                 vscode.window.showErrorMessage(
-                    `FileForge: Invalid file structure. ${validation.errors[0]}`
+                    `FileForge: Invalid file structure. ${errorSummary}`
                 );
 
                 console.error(
