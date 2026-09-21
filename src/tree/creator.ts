@@ -6,8 +6,9 @@ import { TreeNode } from './types';
 export interface CreationResult {
     created: string[];
     skipped: string[];
+    filesWithContent: string[];
+    filesWithoutContent: string[];
 }
-
 export async function createTree(
     root: TreeNode,
     conflictMode: ConflictMode = 'skip'
@@ -26,9 +27,10 @@ export async function createTree(
 
     const result: CreationResult = {
         created: [],
-        skipped: []
+        skipped: [],
+        filesWithContent: [],
+        filesWithoutContent: []
     };
-
     await createNode(
         root,
         rootUri,
@@ -118,6 +120,22 @@ async function createNode(
         uri,
         encodedContent
     );
+
+    if (node.contentStatus === 'available') {
+        result.filesWithContent.push(
+            relativePath(
+                workspaceUri,
+                uri
+            )
+        );
+    } else {
+        result.filesWithoutContent.push(
+            relativePath(
+                workspaceUri,
+                uri
+            )
+        );
+    }
 
     result.created.push(
         relativePath(

@@ -293,8 +293,14 @@ export function activate(
                     const skippedCount =
                         result.skipped.length;
 
+                    const filesWithContentCount =
+                        result.filesWithContent.length;
+
+                    const filesWithoutContentCount =
+                        result.filesWithoutContent.length;
+
                     vscode.window.showInformationMessage(
-                        `FileForge: Created ${createdCount} item(s). Skipped ${skippedCount} existing item(s).`
+                        `FileForge: Created ${createdCount} item(s), including ${filesWithContentCount} file(s) with imported content. ${skippedCount} existing item(s) kept. ${filesWithoutContentCount} file(s) created without imported content.`
                     );
 
                     console.log(

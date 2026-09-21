@@ -189,10 +189,21 @@ describe('Tree Creator', () => {
                     {
                         name: 'hello.txt',
                         type: 'file' as const,
-                        content: 'Hello from FileForge!'
+                        content:
+                            'Hello from FileForge!',
+                        contentStatus:
+                            'available' as const
                     }
                 ]
             };
+
+            fs.rmSync(
+                testDirectory,
+                {
+                    recursive: true,
+                    force: true
+                }
+            );
 
             try {
                 const result =
@@ -205,6 +216,17 @@ describe('Tree Creator', () => {
                     result.created.includes(
                         'fileforge-test/hello.txt'
                     )
+                );
+
+                assert.ok(
+                    result.filesWithContent.includes(
+                        'fileforge-test/hello.txt'
+                    )
+                );
+
+                assert.strictEqual(
+                    result.filesWithoutContent.length,
+                    0
                 );
 
                 assert.strictEqual(
@@ -272,7 +294,9 @@ describe('Tree Creator', () => {
                                 name: 'app.ts',
                                 type: 'file' as const,
                                 content:
-                                    "console.log('Hello FileForge');"
+                                    "console.log('Hello FileForge');",
+                                contentStatus:
+                                    'available' as const
                             }
                         ]
                     },
@@ -280,10 +304,20 @@ describe('Tree Creator', () => {
                         name: 'config.json',
                         type: 'file' as const,
                         content:
-                            '{"enabled":true}'
+                            '{"enabled":true}',
+                        contentStatus:
+                            'available' as const
                     }
                 ]
             };
+
+            fs.rmSync(
+                testDirectory,
+                {
+                    recursive: true,
+                    force: true
+                }
+            );
 
             try {
                 const result =
@@ -305,9 +339,25 @@ describe('Tree Creator', () => {
                 );
 
                 assert.ok(
-                    result.created.includes(
+                    result.filesWithContent.includes(
                         'fileforge-test/src/app.ts'
                     )
+                );
+
+                assert.ok(
+                    result.filesWithContent.includes(
+                        'fileforge-test/config.json'
+                    )
+                );
+
+                assert.strictEqual(
+                    result.filesWithContent.length,
+                    2
+                );
+
+                assert.strictEqual(
+                    result.filesWithoutContent.length,
+                    0
                 );
 
                 assert.ok(
@@ -387,10 +437,11 @@ describe('Tree Creator', () => {
                     ]
                 };
 
-                await createTree(
-                    tree,
-                    'skip'
-                );
+                const result =
+                    await createTree(
+                        tree,
+                        'skip'
+                    );
 
                 assert.ok(
                     fs.existsSync(testFile)
@@ -402,6 +453,17 @@ describe('Tree Creator', () => {
                         'utf8'
                     ),
                     ''
+                );
+
+                assert.ok(
+                    result.filesWithoutContent.includes(
+                        'fileforge-test/secret.txt'
+                    )
+                );
+
+                assert.strictEqual(
+                    result.filesWithContent.length,
+                    0
                 );
             } finally {
                 fs.rmSync(
@@ -459,10 +521,11 @@ describe('Tree Creator', () => {
                     ]
                 };
 
-                await createTree(
-                    tree,
-                    'skip'
-                );
+                const result =
+                    await createTree(
+                        tree,
+                        'skip'
+                    );
 
                 assert.ok(
                     fs.existsSync(testFile)
@@ -474,6 +537,17 @@ describe('Tree Creator', () => {
                         'utf8'
                     ),
                     ''
+                );
+
+                assert.ok(
+                    result.filesWithoutContent.includes(
+                        'fileforge-test/image.bin'
+                    )
+                );
+
+                assert.strictEqual(
+                    result.filesWithContent.length,
+                    0
                 );
             } finally {
                 fs.rmSync(
@@ -531,10 +605,11 @@ describe('Tree Creator', () => {
                     ]
                 };
 
-                await createTree(
-                    tree,
-                    'skip'
-                );
+                const result =
+                    await createTree(
+                        tree,
+                        'skip'
+                    );
 
                 assert.ok(
                     fs.existsSync(testFile)
@@ -546,6 +621,17 @@ describe('Tree Creator', () => {
                         'utf8'
                     ),
                     ''
+                );
+
+                assert.ok(
+                    result.filesWithoutContent.includes(
+                        'fileforge-test/large.txt'
+                    )
+                );
+
+                assert.strictEqual(
+                    result.filesWithContent.length,
+                    0
                 );
             } finally {
                 fs.rmSync(
@@ -688,6 +774,17 @@ describe('Tree Creator', () => {
                     result.created.includes(
                         'fileforge-target/app.ts'
                     )
+                );
+
+                assert.ok(
+                    result.filesWithContent.includes(
+                        'fileforge-target/app.ts'
+                    )
+                );
+
+                assert.strictEqual(
+                    result.filesWithoutContent.length,
+                    0
                 );
             } finally {
                 fs.rmSync(
