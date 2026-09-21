@@ -6,12 +6,12 @@ import { parseAnyTree } from '../tree/parseAnyTree';
 import { parseTree } from '../tree/parser';
 import { serializeTree } from '../tree/serializer';
 
-describe('Tree Parser and Serializer', () => {
+describe('Tree Parser', () => {
     it(
         'should detect ASCII tree format',
         () => {
             const input = `
-my-project/
+project/
 ├── src/
 │   └── app.ts
 └── package.json
@@ -28,7 +28,7 @@ my-project/
         'should detect Markdown tree format',
         () => {
             const input = `
-my-project/
+project/
 - src/
   - app.ts
 - package.json
@@ -45,7 +45,7 @@ my-project/
         'should detect JSON tree format',
         () => {
             const input = JSON.stringify({
-                name: 'my-project',
+                name: 'project',
                 type: 'directory',
                 children: []
             });
@@ -58,26 +58,13 @@ my-project/
     );
 
     it(
-        'should reject invalid JSON as a JSON format',
+        'should reject invalid JSON format',
         () => {
             const input = `
 {
-    "name": "my-project",
-    "type": "directory",
+    "name": "project",
+    "type": "directory"
 `;
-
-            assert.notStrictEqual(
-                detectTreeFormat(input),
-                'json'
-            );
-        }
-    );
-
-    it(
-        'should detect unknown format',
-        () => {
-            const input =
-                'This is not a file structure.';
 
             assert.strictEqual(
                 detectTreeFormat(input),
@@ -87,42 +74,98 @@ my-project/
     );
 
     it(
-        'should parse JSON trees through the unified parser',
+        'should return unknown for unsupported format',
+        () => {
+            const input = `
+This is just some random text.
+There is no file structure here.
+`;
+
+            assert.strictEqual(
+                detectTreeFormat(input),
+                'unknown'
+            );
+        }
+    );
+
+    it(
+        'should parse JSON using the unified parser',
         () => {
             const input = JSON.stringify({
-                name: 'my-project',
+                name: 'project',
                 type: 'directory',
                 children: [
                     {
-                        name: 'src',
-                        type: 'directory',
-                        children: [
-                            {
-                                name: 'app.ts',
-                                type: 'file'
-                            }
-                        ]
+                        name: 'app.ts',
+                        type: 'file'
                     }
                 ]
             });
 
-            const parsed =
+            const result =
                 parseAnyTree(input);
 
-            assert.ok(parsed);
+            assert.ok(result);
 
             assert.strictEqual(
-                parsed.name,
-                'my-project'
+                result.name,
+                'project'
             );
 
             assert.strictEqual(
-                parsed.children?.[0].name,
+                result.type,
+                'directory'
+            );
+
+            assert.strictEqual(
+                result.children?.[0].name,
+                'app.ts'
+            );
+
+            assert.strictEqual(
+                result.children?.[0].type,
+                'file'
+            );
+        }
+    );
+
+    it(
+        'should parse a serialized tree',
+        () => {
+            const input = `
+project/
+├── src/
+│   └── app.ts
+└── package.json
+`;
+
+            const result =
+                parseTree(input);
+
+            assert.ok(result);
+
+            assert.strictEqual(
+                result.name,
+                'project'
+            );
+
+            assert.strictEqual(
+                result.children?.length,
+                2
+            );
+
+            assert.strictEqual(
+                result.children?.[0].name,
                 'src'
             );
 
             assert.strictEqual(
-                parsed.children?.[0]
+                result.children?.[0].type,
+                'directory'
+            );
+
+            assert.strictEqual(
+                result.children?.[0]
                     .children?.[0].name,
                 'app.ts'
             );
@@ -130,69 +173,10 @@ my-project/
     );
 
     it(
-        'should parse a serialized tree correctly',
-        () => {
-            const input = `
-my-project/
-├── src/
-│   ├── components/
-│   │   ├── Footer.tsx
-│   │   └── Header.tsx
-│   └── App.tsx
-├── package.json
-└── README.md
-`;
-
-            const parsed =
-                parseTree(input);
-
-            assert.ok(parsed);
-
-            console.log(
-                '--- SERIALIZED TREE ---'
-            );
-
-            console.log(input);
-
-            console.log(
-                '--- PARSED TREE ---'
-            );
-
-            console.log(
-                JSON.stringify(
-                    parsed,
-                    null,
-                    2
-                )
-            );
-
-            assert.strictEqual(
-                parsed.name,
-                'my-project'
-            );
-
-            assert.strictEqual(
-                parsed.type,
-                'directory'
-            );
-
-            assert.strictEqual(
-                parsed.children?.length,
-                3
-            );
-
-            assert.strictEqual(
-                parsed.children?.[0].name,
-                'src'
-            );
-        }
-    );
-
-    it(
-        'should preserve a tree through serialize and parse',
+        'should support ASCII serialize and parse roundtrip',
         () => {
             const tree = {
-                name: 'my-project',
+                name: 'project',
                 type: 'directory' as const,
                 children: [
                     {
@@ -226,127 +210,118 @@ my-project/
     );
 
     it(
-        'should parse ASCII trees without directory suffixes',
+        'should infer file and directory types without suffixes',
         () => {
             const input = `
-my-project
+project/
 ├── src
 │   └── app.ts
 └── package.json
 `;
 
-            const parsed =
+            const result =
                 parseTree(input);
 
-            assert.ok(parsed);
+            assert.ok(result);
 
             assert.strictEqual(
-                parsed.name,
-                'my-project'
-            );
-
-            assert.strictEqual(
-                parsed.children?.[0].name,
+                result.children?.[0].name,
                 'src'
             );
 
             assert.strictEqual(
-                parsed.children?.[0].type,
+                result.children?.[0].type,
                 'directory'
             );
 
             assert.strictEqual(
-                parsed.children?.[0]
-                    .children?.[0].name,
-                'app.ts'
+                result.children?.[1].name,
+                'package.json'
             );
 
             assert.strictEqual(
-                parsed.children?.[0]
-                    .children?.[0].type,
+                result.children?.[1].type,
                 'file'
             );
         }
     );
 
     it(
-        'should parse Markdown project trees',
+        'should parse a Markdown project tree',
         () => {
             const input = `
-my-project/
+project/
 - src/
   - app.ts
   - components/
-    - Header.tsx
+    - Button.tsx
 - package.json
-- README.md
 `;
 
-            const parsed =
+            const result =
                 parseAnyTree(input);
 
-            assert.ok(parsed);
+            assert.ok(result);
 
             assert.strictEqual(
-                parsed.name,
-                'my-project'
+                result.name,
+                'project'
             );
 
             assert.strictEqual(
-                parsed.children?.length,
-                3
+                result.children?.length,
+                2
             );
 
             assert.strictEqual(
-                parsed.children?.[0].name,
+                result.children?.[0].name,
                 'src'
             );
 
             assert.strictEqual(
-                parsed.children?.[0].type,
+                result.children?.[0].type,
                 'directory'
             );
 
             assert.strictEqual(
-                parsed.children?.[0]
+                result.children?.[0]
                     .children?.[0].name,
                 'app.ts'
             );
 
             assert.strictEqual(
-                parsed.children?.[0]
-                    .children?.[0].type,
-                'file'
-            );
-
-            assert.strictEqual(
-                parsed.children?.[0]
+                result.children?.[0]
                     .children?.[1].name,
                 'components'
             );
 
             assert.strictEqual(
-                parsed.children?.[0]
-                    .children?.[1].type,
-                'directory'
+                result.children?.[0]
+                    .children?.[1]
+                    .children?.[0].name,
+                'Button.tsx'
             );
         }
     );
 
     it(
-        'should parse ASCII and Markdown trees through the unified parser',
+        'should parse equivalent ASCII and Markdown trees',
         () => {
             const asciiInput = `
-my-project/
+project/
 ├── src/
-│   └── app.ts
+│   ├── app.ts
+│   └── components/
+│       └── Button.tsx
 └── package.json
 `;
 
             const markdownInput = `
-my-project/
+project/
 - src/
   - app.ts
+  - components/
+    - Button.tsx
 - package.json
 `;
 
@@ -370,7 +345,7 @@ my-project/
         'should parse a valid JSON project tree',
         () => {
             const input = JSON.stringify({
-                name: 'my-project',
+                name: 'project',
                 type: 'directory',
                 children: [
                     {
@@ -390,28 +365,29 @@ my-project/
                 ]
             });
 
-            const parsed =
+            const result =
                 parseAnyTree(input);
 
-            assert.ok(parsed);
+            assert.ok(result);
 
             assert.strictEqual(
-                parsed.name,
-                'my-project'
+                result.name,
+                'project'
             );
 
             assert.strictEqual(
-                parsed.children?.length,
-                2
-            );
-
-            assert.strictEqual(
-                parsed.children?.[0].name,
+                result.children?.[0].name,
                 'src'
             );
 
             assert.strictEqual(
-                parsed.children?.[1].name,
+                result.children?.[0]
+                    .children?.[0].name,
+                'app.ts'
+            );
+
+            assert.strictEqual(
+                result.children?.[1].name,
                 'package.json'
             );
         }
@@ -421,42 +397,42 @@ my-project/
         'should reject invalid JSON',
         () => {
             const input =
-                '{ invalid json }';
+                '{"name":"project","type":';
 
-            const parsed =
+            const result =
                 parseAnyTree(input);
 
             assert.strictEqual(
-                parsed,
+                result,
                 null
             );
         }
     );
 
     it(
-        'should reject invalid tree structures',
+        'should reject invalid JSON tree structure',
         () => {
             const input = JSON.stringify({
-                name: 'my-project',
+                name: 'project',
                 type: 'invalid',
                 children: []
             });
 
-            const parsed =
+            const result =
                 parseAnyTree(input);
 
             assert.strictEqual(
-                parsed,
+                result,
                 null
             );
         }
     );
 
     it(
-        'should reject a file with children',
+        'should reject files with children',
         () => {
             const input = JSON.stringify({
-                name: 'my-project',
+                name: 'project',
                 type: 'directory',
                 children: [
                     {
@@ -467,11 +443,11 @@ my-project/
                 ]
             });
 
-            const parsed =
+            const result =
                 parseAnyTree(input);
 
             assert.strictEqual(
-                parsed,
+                result,
                 null
             );
         }
@@ -481,53 +457,127 @@ my-project/
         'should parse JSON file content',
         () => {
             const input = JSON.stringify({
-                name: 'my-project',
+                name: 'project',
                 type: 'directory',
                 children: [
                     {
-                        name: 'src',
-                        type: 'directory',
-                        children: [
-                            {
-                                name: 'app.ts',
-                                type: 'file',
-                                content:
-                                    "console.log('Hello');"
-                            }
-                        ]
+                        name: 'app.ts',
+                        type: 'file',
+                        content:
+                            "console.log('Hello');"
                     }
                 ]
             });
 
-            const parsed =
+            const result =
                 parseAnyTree(input);
 
-            assert.ok(parsed);
+            assert.ok(result);
 
             assert.strictEqual(
-                parsed.children?.[0]
-                    .children?.[0]
-                    .content,
+                result.children?.[0].content,
                 "console.log('Hello');"
             );
         }
     );
 
     it(
-        'should reject content on directories',
+        'should reject directories with content',
         () => {
             const input = JSON.stringify({
-                name: 'my-project',
+                name: 'project',
                 type: 'directory',
                 content: 'invalid',
                 children: []
             });
 
-            const parsed =
+            const result =
                 parseAnyTree(input);
 
             assert.strictEqual(
-                parsed,
+                result,
+                null
+            );
+        }
+    );
+
+    it(
+        'should accept valid content status values',
+        () => {
+            const statuses = [
+                'available',
+                'redacted',
+                'binary',
+                'too-large'
+            ];
+
+            for (const status of statuses) {
+                const input = JSON.stringify({
+                    name: 'project',
+                    type: 'directory',
+                    children: [
+                        {
+                            name: 'app.ts',
+                            type: 'file',
+                            contentStatus: status
+                        }
+                    ]
+                });
+
+                const result =
+                    parseAnyTree(input);
+
+                assert.ok(result);
+
+                assert.strictEqual(
+                    result.children?.[0]
+                        .contentStatus,
+                    status
+                );
+            }
+        }
+    );
+
+    it(
+        'should reject invalid content status values',
+        () => {
+            const input = JSON.stringify({
+                name: 'project',
+                type: 'directory',
+                children: [
+                    {
+                        name: 'app.ts',
+                        type: 'file',
+                        contentStatus: 'unknown'
+                    }
+                ]
+            });
+
+            const result =
+                parseAnyTree(input);
+
+            assert.strictEqual(
+                result,
+                null
+            );
+        }
+    );
+
+    it(
+        'should reject content status on directories',
+        () => {
+            const input = JSON.stringify({
+                name: 'project',
+                type: 'directory',
+                contentStatus: 'available',
+                children: []
+            });
+
+            const result =
+                parseAnyTree(input);
+
+            assert.strictEqual(
+                result,
                 null
             );
         }

@@ -157,7 +157,12 @@ describe('JSON Tree Serializer', () => {
 
                 assert.strictEqual(
                     parsed.children[0].content,
-                    '[BINARY CONTENT NOT EXPORTED]'
+                    undefined
+                );
+
+                assert.strictEqual(
+                    parsed.children[0].contentStatus,
+                    'binary'
                 );
             } finally {
                 fs.rmSync(
@@ -244,7 +249,12 @@ describe('JSON Tree Serializer', () => {
 
                 assert.strictEqual(
                     parsed.children[0].content,
-                    '[CONTENT NOT EXPORTED: FILE TOO LARGE]'
+                    undefined
+                );
+
+                assert.strictEqual(
+                    parsed.children[0].contentStatus,
+                    'too-large'
                 );
             } finally {
                 await configuration.update(
@@ -253,6 +263,85 @@ describe('JSON Tree Serializer', () => {
                     vscode.ConfigurationTarget.Workspace
                 );
 
+                fs.rmSync(
+                    testDirectory,
+                    {
+                        recursive: true,
+                        force: true
+                    }
+                );
+            }
+        }
+    );
+
+    it(
+        'should preserve file content through JSON export and parse',
+        async function () {
+            this.timeout(10000);
+
+            const workspaceFolder =
+                vscode.workspace.workspaceFolders?.[0];
+
+            assert.ok(workspaceFolder);
+
+            const testDirectory =
+                path.join(
+                    workspaceFolder.uri.fsPath,
+                    'fileforge-test'
+                );
+
+            const testFile =
+                path.join(
+                    testDirectory,
+                    'app.ts'
+                );
+
+            fs.mkdirSync(
+                testDirectory,
+                {
+                    recursive: true
+                }
+            );
+
+            fs.writeFileSync(
+                testFile,
+                "console.log('Round trip');"
+            );
+
+            const tree = {
+                name: 'fileforge-test',
+                type: 'directory' as const,
+                children: [
+                    {
+                        name: 'app.ts',
+                        type: 'file' as const
+                    }
+                ]
+            };
+
+            try {
+                const json =
+                    await serializeTreeWithContent(
+                        tree,
+                        vscode.Uri.file(
+                            testDirectory
+                        )
+                    );
+
+                const parsedJson =
+                    JSON.parse(json);
+
+                assert.strictEqual(
+                    parsedJson.children[0].content,
+                    "console.log('Round trip');"
+                );
+
+                assert.strictEqual(
+                    parsedJson.children[0]
+                        .contentStatus,
+                    'available'
+                );
+            } finally {
                 fs.rmSync(
                     testDirectory,
                     {

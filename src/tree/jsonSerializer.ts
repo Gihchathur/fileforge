@@ -30,7 +30,7 @@ async function addFileContents(
         if (isSensitiveFile(node.name)) {
             return {
                 ...node,
-                content: '[CONTENT REDACTED]'
+                contentStatus: 'redacted'
             };
         }
 
@@ -53,7 +53,7 @@ async function addFileContents(
         if (fileStat.size > maxFileSize) {
             return {
                 ...node,
-                content: '[CONTENT NOT EXPORTED: FILE TOO LARGE]'
+                contentStatus: 'too-large'
             };
         }
 
@@ -65,7 +65,7 @@ async function addFileContents(
         if (isBinaryContent(data)) {
             return {
                 ...node,
-                content: '[BINARY CONTENT NOT EXPORTED]'
+                contentStatus: 'binary'
             };
         }
 
@@ -73,7 +73,8 @@ async function addFileContents(
             ...node,
             content: Buffer.from(
                 data
-            ).toString('utf8')
+            ).toString('utf8'),
+            contentStatus: 'available'
         };
     }
 

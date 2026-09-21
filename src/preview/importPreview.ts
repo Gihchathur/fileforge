@@ -75,7 +75,7 @@ function getHtml(
     const conflictDescription =
         conflictMode === 'skip'
             ? 'Existing files will be kept unchanged.'
-            : 'Existing files will be overwritten.';
+            : 'Existing files will be kept unchanged.';
 
     return `
 <!DOCTYPE html>
@@ -125,41 +125,6 @@ h1 {
 
 .tree {
     font-family: var(--vscode-editor-font-family);
-    line-height: 1.7;
-}
-
-.create {
-    color: var(--vscode-testing-iconPassed);
-}
-
-.existing {
-    color: var(--vscode-descriptionForeground);
-}
-
-.actions {
-    margin-top: 25px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-
-button {
-    padding: 7px 16px;
-    border: none;
-    cursor: pointer;
-}
-
-.primary {
-    background: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
-}
-
-.secondary {
-    background: var(--vscode-button-secondaryBackground);
-    color: var(--vscode-button-secondaryForeground);
-}
-    .tree {
-    font-family: var(--vscode-editor-font-family);
     line-height: 1.8;
     margin-top: 20px;
 }
@@ -186,7 +151,11 @@ button {
 }
 
 .overwrite .status {
-    color: var(--vscode-testing-iconFailed);
+    color: var(--vscode-descriptionForeground);
+}
+
+.content-warning .status {
+    color: var(--vscode-editorWarning-foreground);
 }
 
 .conflict-mode {
@@ -201,6 +170,29 @@ button {
     color: var(--vscode-descriptionForeground);
     font-size: 13px;
 }
+
+.actions {
+    margin-top: 25px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+button {
+    padding: 7px 16px;
+    border: none;
+    cursor: pointer;
+}
+
+.primary {
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+}
+
+.secondary {
+    background: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+}
 </style>
 </head>
 
@@ -212,7 +204,7 @@ button {
     <strong>Conflict handling:</strong>
     ${conflictMode === 'skip'
         ? 'Skip existing files'
-        : 'Overwrite existing files'}
+        : 'Keep existing files'}
     <div class="conflict-description">
         ${conflictDescription}
     </div>
@@ -239,12 +231,46 @@ button {
 
     <div class="summary-item existing-summary">
         <span class="summary-count">
+            ${countFilesWithStatus(
+                root,
+                'redacted'
+            )}
+        </span>
+        <span>
+            file(s) have redacted content
+        </span>
+    </div>
+
+    <div class="summary-item existing-summary">
+        <span class="summary-count">
+            ${countFilesWithStatus(
+                root,
+                'binary'
+            )}
+        </span>
+        <span>
+            binary file(s)
+        </span>
+    </div>
+
+    <div class="summary-item existing-summary">
+        <span class="summary-count">
+            ${countFilesWithStatus(
+                root,
+                'too-large'
+            )}
+        </span>
+        <span>
+            file(s) exceed the content limit
+        </span>
+    </div>
+
+    <div class="summary-item existing-summary">
+        <span class="summary-count">
             ${preview.existing.length}
         </span>
         <span>
-            ${conflictMode === 'overwrite'
-                ? 'item(s) will be overwritten'
-                : 'item(s) will be kept'}
+            item(s) will be kept
         </span>
     </div>
 </div>
@@ -295,32 +321,41 @@ function renderTree(
         ? `${parentPath}/${node.name}`
         : node.name;
 
-    const indent = '&nbsp;'.repeat(depth * 4);
+    const indent =
+        '&nbsp;'.repeat(depth * 4);
 
     const icon =
         node.type === 'directory'
             ? '📁'
             : '📄';
 
-    const isCreate =
-        preview.create.includes(currentPath);
+    const isExisting =
+        preview.existing.includes(
+            currentPath
+        );
 
-    const statusClass =
-        isCreate
-            ? 'create'
-            : conflictMode === 'overwrite'
-                ? 'overwrite'
-                : 'existing';
+    const isCreate =
+        preview.create.includes(
+            currentPath
+        );
 
     const status =
-        isCreate
-            ? node.type === 'file' &&
-            node.content !== undefined
-                ? 'CREATE + CONTENT'
-                : 'CREATE'
-            : conflictMode === 'overwrite'
-                ? 'OVERWRITE'
-                : 'KEEP';
+        getNodeStatus(
+            node,
+            isExisting,
+            conflictMode
+        );
+
+    const statusClass =
+        isExisting
+            ? 'existing'
+            : status === 'CONTENT REDACTED' ||
+              status === 'BINARY CONTENT' ||
+              status === 'CONTENT TOO LARGE'
+                ? 'content-warning'
+                : isCreate
+                    ? 'create'
+                    : 'existing';
 
     let html = `
         <div class="tree-row ${statusClass}">
@@ -343,29 +378,134 @@ function renderTree(
     return html;
 }
 
-function escapeHtml(value: string): string {
-    return value
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+function getNodeStatus(
+    node: TreeNode,
+    existing: boolean,
+    conflictMode: 'skip' | 'overwrite'
+): string {
+    if (existing) {
+        return 'KEEP';
+    }
+
+    if (
+        node.type === 'file' &&
+        node.contentStatus === 'redacted'
+    ) {
+        return 'CONTENT REDACTED';
+    }
+
+    if (
+        node.type === 'file' &&
+        node.contentStatus === 'binary'
+    ) {
+        return 'BINARY CONTENT';
+    }
+
+    if (
+        node.type === 'file' &&
+        node.contentStatus === 'too-large'
+    ) {
+        return 'CONTENT TOO LARGE';
+    }
+
+    if (
+        node.type === 'file' &&
+        node.contentStatus === 'available'
+    ) {
+        return 'CREATE + CONTENT';
+    }
+
+    if (
+        node.type === 'file' &&
+        node.content !== undefined
+    ) {
+        return 'CREATE + CONTENT';
+    }
+
+    return 'CREATE';
 }
 
-function countFilesWithContent(
+function escapeHtml(
+    value: string
+): string {
+    return value
+        .replace(
+            /&/g,
+            '&amp;'
+        )
+        .replace(
+            /</g,
+            '&lt;'
+        )
+        .replace(
+            />/g,
+            '&gt;'
+        )
+        .replace(
+            /"/g,
+            '&quot;'
+        )
+        .replace(
+            /'/g,
+            '&#039;'
+        );
+}
+
+export function countFilesWithContent(
     root: TreeNode
 ): number {
     let count = 0;
 
-    function visit(node: TreeNode): void {
+    function visit(
+        node: TreeNode
+    ): void {
         if (
             node.type === 'file' &&
-            node.content !== undefined
+            (
+                node.contentStatus === 'available' ||
+                (
+                    node.contentStatus === undefined &&
+                    node.content !== undefined
+                )
+            )
         ) {
             count++;
         }
 
-        for (const child of node.children ?? []) {
+        for (
+            const child of node.children ?? []
+        ) {
+            visit(child);
+        }
+    }
+
+    visit(root);
+
+    return count;
+}
+
+export function countFilesWithStatus(
+    root: TreeNode,
+    status:
+        | 'redacted'
+        | 'binary'
+        | 'too-large'
+): number {
+    let count = 0;
+
+    function visit(
+        node: TreeNode
+    ): void {
+        if (
+            node.type === 'file' &&
+            node.contentStatus === status
+        ) {
+            count++;
+        }
+
+        for (
+            const child of node.children ?? []
+        ) {
             visit(child);
         }
     }

@@ -5,6 +5,9 @@ import * as vscode from 'vscode';
 import { describe, it } from 'mocha';
 
 import { createTree } from '../tree/creator';
+import { serializeTreeWithContent } from '../tree/jsonSerializer';
+import { parseAnyTree } from '../tree/parseAnyTree';
+import { validateTree } from '../tree/validator';
 
 describe('Tree Creator', () => {
     it(
@@ -331,6 +334,372 @@ describe('Tree Creator', () => {
             } finally {
                 fs.rmSync(
                     testDirectory,
+                    {
+                        recursive: true,
+                        force: true
+                    }
+                );
+            }
+        }
+    );
+
+    it(
+        'should create an empty file for redacted content',
+        async function () {
+            this.timeout(10000);
+
+            const workspaceFolder =
+                vscode.workspace.workspaceFolders?.[0];
+
+            assert.ok(workspaceFolder);
+
+            const testDirectory =
+                path.join(
+                    workspaceFolder.uri.fsPath,
+                    'fileforge-test'
+                );
+
+            const testFile =
+                path.join(
+                    testDirectory,
+                    'secret.txt'
+                );
+
+            fs.rmSync(
+                testDirectory,
+                {
+                    recursive: true,
+                    force: true
+                }
+            );
+
+            try {
+                const tree = {
+                    name: 'fileforge-test',
+                    type: 'directory' as const,
+                    children: [
+                        {
+                            name: 'secret.txt',
+                            type: 'file' as const,
+                            contentStatus:
+                                'redacted' as const
+                        }
+                    ]
+                };
+
+                await createTree(
+                    tree,
+                    'skip'
+                );
+
+                assert.ok(
+                    fs.existsSync(testFile)
+                );
+
+                assert.strictEqual(
+                    fs.readFileSync(
+                        testFile,
+                        'utf8'
+                    ),
+                    ''
+                );
+            } finally {
+                fs.rmSync(
+                    testDirectory,
+                    {
+                        recursive: true,
+                        force: true
+                    }
+                );
+            }
+        }
+    );
+
+    it(
+        'should create an empty file for binary content',
+        async function () {
+            this.timeout(10000);
+
+            const workspaceFolder =
+                vscode.workspace.workspaceFolders?.[0];
+
+            assert.ok(workspaceFolder);
+
+            const testDirectory =
+                path.join(
+                    workspaceFolder.uri.fsPath,
+                    'fileforge-test'
+                );
+
+            const testFile =
+                path.join(
+                    testDirectory,
+                    'image.bin'
+                );
+
+            fs.rmSync(
+                testDirectory,
+                {
+                    recursive: true,
+                    force: true
+                }
+            );
+
+            try {
+                const tree = {
+                    name: 'fileforge-test',
+                    type: 'directory' as const,
+                    children: [
+                        {
+                            name: 'image.bin',
+                            type: 'file' as const,
+                            contentStatus:
+                                'binary' as const
+                        }
+                    ]
+                };
+
+                await createTree(
+                    tree,
+                    'skip'
+                );
+
+                assert.ok(
+                    fs.existsSync(testFile)
+                );
+
+                assert.strictEqual(
+                    fs.readFileSync(
+                        testFile,
+                        'utf8'
+                    ),
+                    ''
+                );
+            } finally {
+                fs.rmSync(
+                    testDirectory,
+                    {
+                        recursive: true,
+                        force: true
+                    }
+                );
+            }
+        }
+    );
+
+    it(
+        'should create an empty file for content that is too large',
+        async function () {
+            this.timeout(10000);
+
+            const workspaceFolder =
+                vscode.workspace.workspaceFolders?.[0];
+
+            assert.ok(workspaceFolder);
+
+            const testDirectory =
+                path.join(
+                    workspaceFolder.uri.fsPath,
+                    'fileforge-test'
+                );
+
+            const testFile =
+                path.join(
+                    testDirectory,
+                    'large.txt'
+                );
+
+            fs.rmSync(
+                testDirectory,
+                {
+                    recursive: true,
+                    force: true
+                }
+            );
+
+            try {
+                const tree = {
+                    name: 'fileforge-test',
+                    type: 'directory' as const,
+                    children: [
+                        {
+                            name: 'large.txt',
+                            type: 'file' as const,
+                            contentStatus:
+                                'too-large' as const
+                        }
+                    ]
+                };
+
+                await createTree(
+                    tree,
+                    'skip'
+                );
+
+                assert.ok(
+                    fs.existsSync(testFile)
+                );
+
+                assert.strictEqual(
+                    fs.readFileSync(
+                        testFile,
+                        'utf8'
+                    ),
+                    ''
+                );
+            } finally {
+                fs.rmSync(
+                    testDirectory,
+                    {
+                        recursive: true,
+                        force: true
+                    }
+                );
+            }
+        }
+    );
+
+    it(
+        'should export, parse, validate and recreate a file with content',
+        async function () {
+            this.timeout(10000);
+
+            const workspaceFolder =
+                vscode.workspace.workspaceFolders?.[0];
+
+            assert.ok(workspaceFolder);
+
+            const sourceDirectory =
+                path.join(
+                    workspaceFolder.uri.fsPath,
+                    'fileforge-source'
+                );
+
+            const targetDirectory =
+                path.join(
+                    workspaceFolder.uri.fsPath,
+                    'fileforge-target'
+                );
+
+            const sourceFile =
+                path.join(
+                    sourceDirectory,
+                    'app.ts'
+                );
+
+            const targetFile =
+                path.join(
+                    targetDirectory,
+                    'app.ts'
+                );
+
+            fs.rmSync(
+                sourceDirectory,
+                {
+                    recursive: true,
+                    force: true
+                }
+            );
+
+            fs.rmSync(
+                targetDirectory,
+                {
+                    recursive: true,
+                    force: true
+                }
+            );
+
+            fs.mkdirSync(
+                sourceDirectory,
+                {
+                    recursive: true
+                }
+            );
+
+            fs.writeFileSync(
+                sourceFile,
+                "console.log('FileForge round trip');"
+            );
+
+            const sourceTree = {
+                name: 'fileforge-source',
+                type: 'directory' as const,
+                children: [
+                    {
+                        name: 'app.ts',
+                        type: 'file' as const
+                    }
+                ]
+            };
+
+            try {
+                // 1. Export
+                const json =
+                    await serializeTreeWithContent(
+                        sourceTree,
+                        vscode.Uri.file(
+                            sourceDirectory
+                        )
+                    );
+
+                // 2. Parse
+                const parsed =
+                    parseAnyTree(json);
+
+                assert.ok(parsed);
+
+                // 3. Validate
+                const validation =
+                    validateTree(parsed);
+
+                assert.strictEqual(
+                    validation.valid,
+                    true
+                );
+
+                // 4. Change root name so we create
+                // the structure in a separate directory.
+                parsed.name =
+                    'fileforge-target';
+
+                // 5. Create
+                const result =
+                    await createTree(
+                        parsed,
+                        'skip'
+                    );
+
+                // 6. Verify the file exists
+                assert.ok(
+                    fs.existsSync(targetFile)
+                );
+
+                // 7. Verify the content
+                assert.strictEqual(
+                    fs.readFileSync(
+                        targetFile,
+                        'utf8'
+                    ),
+                    "console.log('FileForge round trip');"
+                );
+
+                // 8. Verify it was reported as created
+                assert.ok(
+                    result.created.includes(
+                        'fileforge-target/app.ts'
+                    )
+                );
+            } finally {
+                fs.rmSync(
+                    sourceDirectory,
+                    {
+                        recursive: true,
+                        force: true
+                    }
+                );
+
+                fs.rmSync(
+                    targetDirectory,
                     {
                         recursive: true,
                         force: true

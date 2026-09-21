@@ -105,7 +105,11 @@ async function createNode(
     }
 
     const content =
-        node.content ?? '';
+        node.contentStatus === 'available'
+            ? node.content ?? ''
+            : node.contentStatus === undefined
+                ? node.content ?? ''
+                : '';
 
     const encodedContent =
         Buffer.from(content, 'utf8');
