@@ -1,14 +1,28 @@
 import * as vscode from 'vscode';
+import { Buffer } from 'buffer';
+import { ConflictMode } from './conflict';
 import { TreeNode } from './types';
+import { validateTree } from './validator';
 
 export interface CreationResult {
     created: string[];
     skipped: string[];
+    filesWithContent: string[];
+    filesWithoutContent: string[];
 }
-
 export async function createTree(
-    root: TreeNode
+    root: TreeNode,
+    conflictMode: ConflictMode = 'skip'
 ): Promise<CreationResult> {
+    const validation =
+        validateTree(root);
+
+    if (!validation.valid) {
+        throw new Error(
+            `Invalid file structure: ${validation.errors.join(' ')}`
+        );
+    }
+
     const workspaceFolder =
         vscode.workspace.workspaceFolders?.[0];
 
@@ -23,14 +37,16 @@ export async function createTree(
 
     const result: CreationResult = {
         created: [],
-        skipped: []
+        skipped: [],
+        filesWithContent: [],
+        filesWithoutContent: []
     };
-
     await createNode(
         root,
         rootUri,
         workspaceFolder.uri,
-        result
+        result,
+        conflictMode
     );
 
     return result;
@@ -40,29 +56,36 @@ async function createNode(
     node: TreeNode,
     uri: vscode.Uri,
     workspaceUri: vscode.Uri,
-    result: CreationResult
+    result: CreationResult,
+    conflictMode: ConflictMode
 ): Promise<void> {
     if (node.type === 'directory') {
         const exists = await fileExists(uri);
 
         if (!exists) {
             await vscode.workspace.fs.createDirectory(uri);
+
             result.created.push(
-                relativePath(workspaceUri, uri)
+                relativePath(
+                    workspaceUri,
+                    uri
+                )
             );
         }
 
         for (const child of node.children ?? []) {
-            const childUri = vscode.Uri.joinPath(
-                uri,
-                child.name
-            );
+            const childUri =
+                vscode.Uri.joinPath(
+                    uri,
+                    child.name
+                );
 
             await createNode(
                 child,
                 childUri,
                 workspaceUri,
-                result
+                result,
+                conflictMode
             );
         }
 
@@ -70,19 +93,65 @@ async function createNode(
     }
 
     if (await fileExists(uri)) {
-        result.skipped.push(
-            relativePath(workspaceUri, uri)
-        );
-        return;
+        if (conflictMode === 'skip') {
+            result.skipped.push(
+                relativePath(
+                    workspaceUri,
+                    uri
+                )
+            );
+
+            return;
+        }
+
+        if (conflictMode === 'overwrite') {
+            result.skipped.push(
+                relativePath(
+                    workspaceUri,
+                    uri
+                )
+            );
+
+            return;
+        }
     }
+
+    const content =
+        node.contentStatus === 'available'
+            ? node.content ?? ''
+            : node.contentStatus === undefined
+                ? node.content ?? ''
+                : '';
+
+    const encodedContent =
+        Buffer.from(content, 'utf8');
 
     await vscode.workspace.fs.writeFile(
         uri,
-        new Uint8Array()
+        encodedContent
     );
 
+    if (node.contentStatus === 'available') {
+        result.filesWithContent.push(
+            relativePath(
+                workspaceUri,
+                uri
+            )
+        );
+    } else {
+        result.filesWithoutContent.push(
+            relativePath(
+                workspaceUri,
+                uri
+            )
+        );
+    }
+
     result.created.push(
-        relativePath(workspaceUri, uri)
+        relativePath(
+            workspaceUri,
+            uri
+        )
     );
 }
 
@@ -101,11 +170,14 @@ function relativePath(
     workspaceUri: vscode.Uri,
     uri: vscode.Uri
 ): string {
-    const workspacePath = workspaceUri.path.endsWith('/')
-        ? workspaceUri.path
-        : `${workspaceUri.path}/`;
+    const workspacePath =
+        workspaceUri.path.endsWith('/')
+            ? workspaceUri.path
+            : `${workspaceUri.path}/`;
 
     return uri.path.startsWith(workspacePath)
-        ? uri.path.slice(workspacePath.length)
+        ? uri.path.slice(
+            workspacePath.length
+        )
         : uri.path;
 }

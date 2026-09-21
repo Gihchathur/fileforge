@@ -1,8 +1,16 @@
 {
   "name": "fileforge",
-  "displayName": "FileForge",
-  "description": "Export project file structures and recreate files and folders from a file structure directly in VS Code.",
-  "version": "0.0.1",
+  "displayName": "FileForge - Project File Tree",
+  "description": "Export and import project file trees in VS Code.",
+  "version": "0.1.3",
+  "publisher": "GihanChathuranga",
+  "icon": "images/fileforge-icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Gihchathur/fileforge.git"
+  },
+  "homepage": "https://github.com/Gihchathur/fileforge",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.138.0"
   },
@@ -19,15 +27,15 @@
       },
       {
         "command": "fileforge.copyStructure",
-        "title": "FileForge: Copy File Structure"
-      },
-      {
-        "command": "fileforge.testParser",
-        "title": "FileForge: Test Parser"
+        "title": "FileForge: Copy Structure"
       },
       {
         "command": "fileforge.importStructure",
-        "title": "FileForge: Import File Structure"
+        "title": "FileForge: Import Structure"
+      },
+      {
+        "command": "fileforge.copyJsonWithContent",
+        "title": "FileForge: Copy JSON With Content"
       }
     ],
     "viewsContainers": {
@@ -68,6 +76,36 @@
             "obj"
           ],
           "description": "Directory names excluded when scanning a workspace."
+        },
+        "fileforge.sensitiveFiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            ".env",
+            ".env.local",
+            ".env.development",
+            ".env.production",
+            ".env.test",
+            "credentials.json",
+            "secrets.json",
+            "service-account.json",
+            "id_rsa",
+            "id_rsa.pub",
+            "id_dsa",
+            "id_ecdsa",
+            "id_ed25519",
+            "private.key",
+            "private.pem"
+          ],
+          "description": "File names whose contents are redacted when exporting JSON with file contents."
+        },
+        "fileforge.maxContentFileSize": {
+          "type": "number",
+          "default": 1048576,
+          "minimum": 0,
+          "description": "Maximum file size in bytes whose contents can be exported as JSON. Files larger than this limit are not exported."
         }
       }
     }
@@ -87,19 +125,23 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.138.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "24.x",
-    "typescript-eslint": "^8.61.1",
-    "eslint": "^10.5.0",
+    "@types/vscode": "^1.138.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.0.0",
+    "@vscode/vsce": "^4.0.0",
     "esbuild": "^0.28.1",
+    "eslint": "^10.5.0",
     "npm-run-all": "^4.1.5",
     "typescript": "^6.0.3",
-    "@vscode/test-cli": "^0.0.15",
-    "@vscode/test-electron": "^3.0.0"
+    "typescript-eslint": "^8.61.1"
   },
   "overrides": {
     "diff": "^8.0.4",
     "serialize-javascript": "^7.0.6"
+  },
+  "dependencies": {
+    "@vscode/codicons": "^0.0.46-24"
   }
 }

@@ -21,6 +21,25 @@
         ".vscode",
         "bin",
         "obj",
+        "temp",
         "temp"
-    ]
+    ],
+    "fileforge.sensitiveFiles": [
+        ".env",
+        ".env.local",
+        ".env.development",
+        ".env.production",
+        ".env.test",
+        "credentials.json",
+        "secrets.json",
+        "service-account.json",
+        "id_rsa",
+        "id_rsa.pub",
+        "id_dsa",
+        "id_ecdsa",
+        "id_ed25519",
+        "private.key",
+        "private.pem"
+    ],
+    "fileforge.maxContentFileSize": 1048576
 }

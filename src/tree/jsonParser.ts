@@ -28,7 +28,8 @@ function isTreeNode(
         return false;
     }
 
-    const node = value as Record<string, unknown>;
+    const node =
+        value as Record<string, unknown>;
 
     if (
         typeof node.name !== 'string' ||
@@ -52,10 +53,49 @@ function isTreeNode(
             return false;
         }
 
+        if (node.content !== undefined) {
+            return false;
+        }
+
+        if (node.contentStatus !== undefined) {
+            return false;
+        }
+
         return (node.children ?? []).every(
             child => isTreeNode(child)
         );
     }
 
-    return node.children === undefined;
+    if (node.children !== undefined) {
+        return false;
+    }
+
+    if (
+        node.content !== undefined &&
+        typeof node.content !== 'string'
+    ) {
+        return false;
+    }
+
+    if (
+        node.contentStatus !== undefined &&
+        !isValidContentStatus(
+            node.contentStatus
+        )
+    ) {
+        return false;
+    }
+
+    return true;
+}
+
+function isValidContentStatus(
+    value: unknown
+): boolean {
+    return (
+        value === 'available' ||
+        value === 'redacted' ||
+        value === 'binary' ||
+        value === 'too-large'
+    );
 }

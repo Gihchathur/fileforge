@@ -85,4 +85,85 @@ describe('FileForge Validator', () => {
         assert.strictEqual(result.valid, false);
     });
 
+    it(
+        'should reject duplicate sibling names',
+        () => {
+            const tree = {
+                name: 'project',
+                type: 'directory' as const,
+                children: [
+                    {
+                        name: 'src',
+                        type: 'directory' as const,
+                        children: []
+                    },
+                    {
+                        name: 'src',
+                        type: 'directory' as const,
+                        children: []
+                    }
+                ]
+            };
+
+            const result =
+                validateTree(tree);
+
+            assert.strictEqual(
+                result.valid,
+                false
+            );
+
+            assert.ok(
+                result.errors.some(
+                    error =>
+                        error.includes(
+                            'Duplicate entry'
+                        )
+                )
+            );
+        }
+    );
+
+    it(
+        'should reject a file as the root',
+        () => {
+            const tree = {
+                name: 'app.ts',
+                type: 'file' as const
+            };
+
+            const result =
+                validateTree(tree);
+
+            assert.strictEqual(
+                result.valid,
+                false
+            );
+        }
+    );
+
+    it(
+        'should reject null characters',
+        () => {
+            const tree = {
+                name: 'project',
+                type: 'directory' as const,
+                children: [
+                    {
+                        name: 'bad\0file.txt',
+                        type: 'file' as const
+                    }
+                ]
+            };
+
+            const result =
+                validateTree(tree);
+
+            assert.strictEqual(
+                result.valid,
+                false
+            );
+        }
+    );
+
 });

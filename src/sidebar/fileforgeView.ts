@@ -25,6 +25,11 @@ export class FileForgeViewProvider
                 'export'
             ),
             new FileForgeItem(
+                'Export JSON With Content',
+                'fileforge.copyJsonWithContent',
+                'json'
+            ),
+            new FileForgeItem(
                 'Import File Structure',
                 'fileforge.importStructure',
                 'import'
@@ -68,6 +73,9 @@ function getIcon(
     switch (icon) {
         case 'export':
             return 'copy';
+
+        case 'json':
+            return 'json';
 
         case 'import':
             return 'cloud-download';

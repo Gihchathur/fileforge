@@ -10,7 +10,18 @@ export function validateTree(
 ): ValidationResult {
     const errors: string[] = [];
 
-    validateNode(root, '', errors);
+    if (root.type !== 'directory') {
+        errors.push(
+            'Root node must be a directory.'
+        );
+    }
+
+    validateNode(
+        root,
+        '',
+        errors,
+        true
+    );
 
     return {
         valid: errors.length === 0,
@@ -21,17 +32,48 @@ export function validateTree(
 function validateNode(
     node: TreeNode,
     parentPath: string,
-    errors: string[]
+    errors: string[],
+    isRoot = false
 ): void {
     const currentPath = parentPath
         ? `${parentPath}/${node.name}`
         : node.name;
 
-    validateName(node.name, currentPath, errors);
+    validateName(
+        node.name,
+        currentPath,
+        errors
+    );
+
+    if (
+        isRoot &&
+        node.type !== 'directory'
+    ) {
+        errors.push(
+            `Root node "${node.name}" must be a directory.`
+        );
+    }
 
     if (node.type === 'directory') {
-        for (const child of node.children ?? []) {
-            validateNode(child, currentPath, errors);
+        const children =
+            node.children ?? [];
+
+        const names = new Set<string>();
+
+        for (const child of children) {
+            if (names.has(child.name)) {
+                errors.push(
+                    `Duplicate entry "${child.name}" at "${currentPath}".`
+                );
+            }
+
+            names.add(child.name);
+
+            validateNode(
+                child,
+                currentPath,
+                errors
+            );
         }
     }
 }
@@ -42,17 +84,25 @@ function validateName(
     errors: string[]
 ): void {
     if (!name.trim()) {
-        errors.push(`Empty name at "${path}".`);
+        errors.push(
+            `Empty name at "${path}".`
+        );
         return;
     }
 
-    if (name === '.' || name === '..') {
+    if (
+        name === '.' ||
+        name === '..'
+    ) {
         errors.push(
             `Invalid path component "${name}" at "${path}".`
         );
     }
 
-    if (name.includes('/') || name.includes('\\')) {
+    if (
+        name.includes('/') ||
+        name.includes('\\')
+    ) {
         errors.push(
             `Path separator detected in "${path}".`
         );
@@ -67,6 +117,14 @@ function validateName(
     if (name.startsWith('~')) {
         errors.push(
             `Home-directory path detected in "${path}".`
+        );
+    }
+
+    if (
+        name.includes('\0')
+    ) {
+        errors.push(
+            `Null character detected in "${path}".`
         );
     }
 }
