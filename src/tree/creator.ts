@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { Buffer } from 'buffer';
 import { ConflictMode } from './conflict';
 import { TreeNode } from './types';
+import { validateTree } from './validator';
 
 export interface CreationResult {
     created: string[];
@@ -13,6 +14,15 @@ export async function createTree(
     root: TreeNode,
     conflictMode: ConflictMode = 'skip'
 ): Promise<CreationResult> {
+    const validation =
+        validateTree(root);
+
+    if (!validation.valid) {
+        throw new Error(
+            `Invalid file structure: ${validation.errors.join(' ')}`
+        );
+    }
+
     const workspaceFolder =
         vscode.workspace.workspaceFolders?.[0];
 

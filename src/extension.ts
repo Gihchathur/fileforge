@@ -236,17 +236,10 @@ export function activate(
                         [
                             {
                                 label:
-                                    'Skip existing files',
+                                    'Keep existing files',
                                 description:
-                                    'Keep existing files unchanged.',
+                                    'Existing files will not be modified.',
                                 mode: 'skip' as const
-                            },
-                            {
-                                label:
-                                    'Overwrite existing files',
-                                description:
-                                    'Replace existing files with empty files.',
-                                mode: 'overwrite' as const
                             }
                         ],
                         {
@@ -267,13 +260,34 @@ export function activate(
 
                 const confirmed =
                     await showImportPreview(
-                        context,
                         parsed,
-                        preview,
-                        conflictMode.mode
+                        preview
                     );
 
                 if (!confirmed) {
+                    vscode.window.showInformationMessage(
+                        'FileForge: Import cancelled.'
+                    );
+                    return;
+                }
+
+                const finalConfirmation =
+                    await vscode.window.showWarningMessage(
+                        [
+                            'FileForge import summary:',
+                            '',
+                            `• ${preview.create.length} item(s) will be created`,
+                            `• ${resultFilesWithContentCount(parsed)} file(s) contain imported content`,
+                            `• ${resultFilesWithoutContentCount(parsed)} file(s) have no imported content`,
+                            `• ${preview.existing.length} existing item(s) will remain unchanged`
+                        ].join('\n'),
+                        {
+                            modal: true
+                        },
+                        'Create'
+                    );
+
+                if (finalConfirmation !== 'Create') {
                     vscode.window.showInformationMessage(
                         'FileForge: Import cancelled.'
                     );
@@ -351,9 +365,82 @@ export function activate(
         scanCommand,
         copyCommand,
         copyJsonWithContentCommand,
-        testParserCommand,
         importCommand
     );
+}
+
+function resultFilesWithContentCount(
+    root: {
+        type: 'file' | 'directory';
+        content?: string;
+        contentStatus?: string;
+        children?: unknown[];
+    }
+): number {
+    let count = 0;
+
+    function visit(node: typeof root): void {
+        if (
+            node.type === 'file' &&
+            (
+                node.contentStatus === 'available' ||
+                (
+                    node.contentStatus === undefined &&
+                    node.content !== undefined
+                )
+            )
+        ) {
+            count++;
+        }
+
+        for (
+            const child of node.children ?? []
+        ) {
+            visit(
+                child as typeof root
+            );
+        }
+    }
+
+    visit(root);
+
+    return count;
+}
+
+function resultFilesWithoutContentCount(
+    root: {
+        type: 'file' | 'directory';
+        content?: string;
+        contentStatus?: string;
+        children?: unknown[];
+    }
+): number {
+    let count = 0;
+
+    function visit(node: typeof root): void {
+        if (
+            node.type === 'file' &&
+            (
+                node.contentStatus === 'redacted' ||
+                node.contentStatus === 'binary' ||
+                node.contentStatus === 'too-large'
+            )
+        ) {
+            count++;
+        }
+
+        for (
+            const child of node.children ?? []
+        ) {
+            visit(
+                child as typeof root
+            );
+        }
+    }
+
+    visit(root);
+
+    return count;
 }
 
 export function deactivate() {}

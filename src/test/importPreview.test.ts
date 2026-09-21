@@ -1,14 +1,11 @@
 import * as assert from 'assert';
 import { describe, it } from 'mocha';
 
-import {
-    countFilesWithContent,
-    countFilesWithStatus
-} from '../preview/importPreview';
+import { summarizeContent } from '../tree/contentSummary';
 
-describe('Import Preview', () => {
+describe('Content Summary', () => {
     it(
-        'should count only files with available content',
+        'should summarize all content statuses',
         () => {
             const tree = {
                 name: 'project',
@@ -17,8 +14,7 @@ describe('Import Preview', () => {
                     {
                         name: 'app.ts',
                         type: 'file' as const,
-                        content:
-                            "console.log('Hello');",
+                        content: 'console.log("Hello");',
                         contentStatus:
                             'available' as const
                     },
@@ -39,16 +35,30 @@ describe('Import Preview', () => {
                         type: 'file' as const,
                         contentStatus:
                             'too-large' as const
-                    },
-                    {
-                        name: 'README.md',
-                        type: 'file' as const
                     }
                 ]
             };
 
+            const summary =
+                summarizeContent(tree);
+
             assert.strictEqual(
-                countFilesWithContent(tree),
+                summary.available,
+                1
+            );
+
+            assert.strictEqual(
+                summary.redacted,
+                1
+            );
+
+            assert.strictEqual(
+                summary.binary,
+                1
+            );
+
+            assert.strictEqual(
+                summary.tooLarge,
                 1
             );
         }
@@ -65,132 +75,32 @@ describe('Import Preview', () => {
                         name: 'app.ts',
                         type: 'file' as const,
                         content:
-                            "console.log('Hello');"
-                    },
-                    {
-                        name: 'README.md',
-                        type: 'file' as const
+                            'console.log("Hello");'
                     }
                 ]
             };
 
+            const summary =
+                summarizeContent(tree);
+
             assert.strictEqual(
-                countFilesWithContent(tree),
+                summary.available,
                 1
             );
-        }
-    );
-
-    it(
-        'should count redacted files',
-        () => {
-            const tree = {
-                name: 'project',
-                type: 'directory' as const,
-                children: [
-                    {
-                        name: '.env',
-                        type: 'file' as const,
-                        contentStatus:
-                            'redacted' as const
-                    },
-                    {
-                        name: 'credentials.json',
-                        type: 'file' as const,
-                        contentStatus:
-                            'redacted' as const
-                    },
-                    {
-                        name: 'app.ts',
-                        type: 'file' as const,
-                        contentStatus:
-                            'available' as const
-                    }
-                ]
-            };
 
             assert.strictEqual(
-                countFilesWithStatus(
-                    tree,
-                    'redacted'
-                ),
-                2
+                summary.redacted,
+                0
             );
-        }
-    );
-
-    it(
-        'should count binary files',
-        () => {
-            const tree = {
-                name: 'project',
-                type: 'directory' as const,
-                children: [
-                    {
-                        name: 'image.png',
-                        type: 'file' as const,
-                        contentStatus:
-                            'binary' as const
-                    },
-                    {
-                        name: 'logo.jpg',
-                        type: 'file' as const,
-                        contentStatus:
-                            'binary' as const
-                    },
-                    {
-                        name: 'app.ts',
-                        type: 'file' as const,
-                        contentStatus:
-                            'available' as const
-                    }
-                ]
-            };
 
             assert.strictEqual(
-                countFilesWithStatus(
-                    tree,
-                    'binary'
-                ),
-                2
+                summary.binary,
+                0
             );
-        }
-    );
-
-    it(
-        'should count files that exceed the content limit',
-        () => {
-            const tree = {
-                name: 'project',
-                type: 'directory' as const,
-                children: [
-                    {
-                        name: 'database.sql',
-                        type: 'file' as const,
-                        contentStatus:
-                            'too-large' as const
-                    },
-                    {
-                        name: 'backup.sql',
-                        type: 'file' as const,
-                        contentStatus:
-                            'too-large' as const
-                    },
-                    {
-                        name: 'app.ts',
-                        type: 'file' as const,
-                        contentStatus:
-                            'available' as const
-                    }
-                ]
-            };
 
             assert.strictEqual(
-                countFilesWithStatus(
-                    tree,
-                    'too-large'
-                ),
-                2
+                summary.tooLarge,
+                0
             );
         }
     );
