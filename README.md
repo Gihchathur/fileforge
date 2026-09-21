@@ -11,21 +11,19 @@ FileForge is a VS Code extension for exporting and importing project file struct
 
 Review the complete project tree before copying it to the clipboard.
 
-![FileForge Export File Structure](images/screenshots/export-structure.png)
+![FileForge Export File Structure](https://raw.githubusercontent.com/Gihchathur/fileforge/main/images/screenshots/export-structure.png)
 
 ### Export JSON with content
 
 Inspect the structured JSON, file contents, content status, and project statistics in the VS Code-themed preview.
 
-![FileForge Export JSON With Content](images/screenshots/export-json.png)
+![FileForge Export JSON With Content](https://raw.githubusercontent.com/Gihchathur/fileforge/main/images/screenshots/export-json.png)
 
 ### Import preview
 
 Review files that will be created, existing files that will be kept, and content-safety statuses before confirming the import.
 
-![FileForge Import Preview](images/screenshots/import-preview.png)
-
-> **Tip:** Add these three screenshots to `images/screenshots/` using the filenames shown above.
+![FileForge Import Preview](https://raw.githubusercontent.com/Gihchathur/fileforge/main/images/screenshots/import-preview.png)
 
 
 It can turn a workspace into a portable file structure, export a structured JSON representation with file contents, and recreate that structure inside another VS Code workspace.

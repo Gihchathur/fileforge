@@ -2,7 +2,7 @@
   "name": "fileforge",
   "displayName": "FileForge - Project File Tree",
   "description": "Export and import project file trees in VS Code.",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "publisher": "GihanChathuranga",
   "icon": "images/fileforge-icon.png",
   "repository": {
