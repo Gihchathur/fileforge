@@ -13,23 +13,64 @@
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
+      {
+        "command": "fileforge.scanWorkspace",
+        "title": "FileForge: Scan Workspace"
+      },
+      {
+        "command": "fileforge.copyStructure",
+        "title": "FileForge: Copy File Structure"
+      },
+      {
+        "command": "fileforge.testParser",
+        "title": "FileForge: Test Parser"
+      },
+      {
+        "command": "fileforge.importStructure",
+        "title": "FileForge: Import File Structure"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
         {
-            "command": "fileforge.scanWorkspace",
-            "title": "FileForge: Scan Workspace"
-        },
-        {
-            "command": "fileforge.copyStructure",
-            "title": "FileForge: Copy File Structure"
-        },
-        {
-            "command": "fileforge.testParser",
-            "title": "FileForge: Test Parser"
-        },
-        {
-            "command": "fileforge.importStructure",
-            "title": "FileForge: Import File Structure"
+          "id": "fileforge",
+          "title": "FileForge",
+          "icon": "$(file-directory)"
         }
-    ]
+      ]
+    },
+    "views": {
+      "fileforge": [
+        {
+          "id": "fileforge.mainView",
+          "name": "FileForge"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "FileForge",
+      "properties": {
+        "fileforge.ignoreDirectories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "node_modules",
+            ".git",
+            "dist",
+            "build",
+            "coverage",
+            ".next",
+            ".nuxt",
+            ".vscode",
+            "bin",
+            "obj"
+          ],
+          "description": "Directory names excluded when scanning a workspace."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",

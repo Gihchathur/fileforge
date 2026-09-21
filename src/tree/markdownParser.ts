@@ -1,6 +1,8 @@
 import { TreeNode } from './types';
 
-export function parseTree(input: string): TreeNode | null {
+export function parseMarkdownTree(
+    input: string
+): TreeNode | null {
     const lines = input
         .split(/\r?\n/)
         .map(line => line.replace(/\s+$/, ''))
@@ -29,20 +31,24 @@ export function parseTree(input: string): TreeNode | null {
     ];
 
     for (let i = 1; i < lines.length; i++) {
-        const line = lines[i];
-
-        const parsed = parseLine(line);
+        const parsed = parseMarkdownLine(lines[i]);
 
         if (!parsed) {
             continue;
         }
 
-        const { depth, name, type } = parsed;
+        const {
+            depth,
+            name,
+            type
+        } = parsed;
 
         const node: TreeNode = {
             name,
             type,
-            ...(type === 'directory' ? { children: [] } : {})
+            ...(type === 'directory'
+                ? { children: [] }
+                : {})
         };
 
         while (
@@ -52,7 +58,8 @@ export function parseTree(input: string): TreeNode | null {
             stack.pop();
         }
 
-        const parent = stack[stack.length - 1]?.node;
+        const parent =
+            stack[stack.length - 1]?.node;
 
         if (!parent) {
             continue;
@@ -72,7 +79,7 @@ export function parseTree(input: string): TreeNode | null {
     return root;
 }
 
-function parseLine(
+function parseMarkdownLine(
     line: string
 ): {
     depth: number;
@@ -80,19 +87,32 @@ function parseLine(
     type: 'file' | 'directory';
 } | null {
     const match = line.match(
-        /^((?:│   |    )*)(?:├── |└── )(.*)$/
+        /^(\s*)[-*+]\s+(.*)$/
     );
 
     if (!match) {
         return null;
     }
 
-    const prefix = match[1];
+    const whitespace = match[1];
+
     let name = match[2].trim();
 
-    const depth = prefix.length / 4;
+    /*
+     * Markdown tree indentation:
+     *
+     * - src/
+     *   - app.ts
+     *
+     * No indentation = depth 0
+     * Two spaces      = depth 1
+     * Four spaces     = depth 2
+     */
+    const depth =
+        Math.floor(whitespace.length / 2);
 
-    const hasDirectorySuffix = name.endsWith('/');
+    const hasDirectorySuffix =
+        name.endsWith('/');
 
     if (hasDirectorySuffix) {
         name = name.slice(0, -1);
@@ -109,18 +129,12 @@ function parseLine(
     };
 }
 
-function removeDirectorySuffix(name: string): string {
-    return name.endsWith('/')
-        ? name.slice(0, -1)
-        : name;
-}
-
 function inferNodeType(
     name: string
 ): 'file' | 'directory' {
-    const fileName = name.toLowerCase();
+    const lowerName = name.toLowerCase();
 
-    const knownFileNames = new Set([
+    const knownFiles = new Set([
         'package.json',
         'package-lock.json',
         'yarn.lock',
@@ -136,11 +150,11 @@ function inferNodeType(
         'license.md'
     ]);
 
-    if (knownFileNames.has(fileName)) {
+    if (knownFiles.has(lowerName)) {
         return 'file';
     }
 
-    const knownFileExtensions = [
+    const fileExtensions = [
         '.ts',
         '.tsx',
         '.js',
@@ -178,12 +192,20 @@ function inferNodeType(
     ];
 
     if (
-        knownFileExtensions.some(
-            extension => fileName.endsWith(extension)
+        fileExtensions.some(extension =>
+            lowerName.endsWith(extension)
         )
     ) {
         return 'file';
     }
 
     return 'directory';
+}
+
+function removeDirectorySuffix(
+    name: string
+): string {
+    return name.endsWith('/')
+        ? name.slice(0, -1)
+        : name;
 }
