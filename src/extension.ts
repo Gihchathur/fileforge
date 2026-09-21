@@ -2,13 +2,19 @@ import * as vscode from 'vscode';
 
 import { scanWorkspace } from './tree/scanner';
 import { serializeTree } from './tree/serializer';
+import { serializeTreeWithContent } from './tree/jsonSerializer';
 import { parseAnyTree } from './tree/parseAnyTree';
 import { validateTree } from './tree/validator';
 import { createTree } from './tree/creator';
 import { previewTree } from './tree/preview';
+
 import { showImportPreview } from './preview/importPreview';
+import { showExportPreview } from './export/exportPreview';
+
+import { getTreeStats } from './tree/treeStats';
+import { summarizeContent } from './tree/contentSummary';
+
 import { FileForgeViewProvider } from './sidebar/fileforgeView';
-import { serializeTreeWithContent } from './tree/jsonSerializer';
 
 export function activate(
     context: vscode.ExtensionContext
@@ -34,6 +40,7 @@ export function activate(
                     vscode.window.showErrorMessage(
                         'FileForge: No workspace is open.'
                     );
+
                     return;
                 }
 
@@ -63,19 +70,31 @@ export function activate(
                     vscode.window.showErrorMessage(
                         'FileForge: No workspace is open.'
                     );
+
                     return;
                 }
 
                 const output =
                     serializeTree(tree);
 
-                await vscode.env.clipboard.writeText(
-                    output
-                );
+                const stats =
+                    getTreeStats(tree);
 
-                vscode.window.showInformationMessage(
-                    'FileForge: File structure copied to clipboard.'
-                );
+                await showExportPreview({
+                    title:
+                        'Export File Structure',
+
+                    content:
+                        output,
+
+                    language:
+                        'plaintext',
+
+                    root:
+                        tree,
+
+                    stats
+                });
             }
         );
 
@@ -90,6 +109,7 @@ export function activate(
                     vscode.window.showErrorMessage(
                         'FileForge: No workspace is open.'
                     );
+
                     return;
                 }
 
@@ -100,6 +120,7 @@ export function activate(
                     vscode.window.showErrorMessage(
                         'FileForge: Could not scan the workspace.'
                     );
+
                     return;
                 }
 
@@ -110,13 +131,32 @@ export function activate(
                             workspaceFolder.uri
                         );
 
-                    await vscode.env.clipboard.writeText(
-                        json
-                    );
+                    const stats =
+                        getTreeStats(tree);
 
-                    vscode.window.showInformationMessage(
-                        'FileForge: JSON structure with file contents copied to clipboard.'
-                    );
+                    const parsedJson =
+                        JSON.parse(json);
+
+                    const contentSummary =
+                        summarizeContent(parsedJson);
+
+                    await showExportPreview({
+                        title:
+                            'Export JSON With Content',
+
+                        content:
+                            json,
+
+                        language:
+                            'json',
+
+                        root:
+                            tree,
+
+                        stats,
+
+                        contentSummary
+                    });
                 } catch (error) {
                     const message =
                         error instanceof Error
@@ -132,48 +172,6 @@ export function activate(
             }
         );
 
-    const testParserCommand =
-        vscode.commands.registerCommand(
-            'fileforge.testParser',
-            async () => {
-                const text =
-                    await vscode.env.clipboard.readText();
-
-                if (!text.trim()) {
-                    vscode.window.showWarningMessage(
-                        'FileForge: Clipboard is empty.'
-                    );
-                    return;
-                }
-
-                const parsed =
-                    parseAnyTree(text);
-
-                if (!parsed) {
-                    vscode.window.showErrorMessage(
-                        'FileForge: Could not parse the clipboard content.'
-                    );
-                    return;
-                }
-
-                console.log(
-                    '--- PARSED TREE ---'
-                );
-
-                console.log(
-                    JSON.stringify(
-                        parsed,
-                        null,
-                        2
-                    )
-                );
-
-                vscode.window.showInformationMessage(
-                    'FileForge: Clipboard structure parsed successfully. Check the Debug Console.'
-                );
-            }
-        );
-
     const importCommand =
         vscode.commands.registerCommand(
             'fileforge.importStructure',
@@ -185,6 +183,7 @@ export function activate(
                     vscode.window.showWarningMessage(
                         'FileForge: Clipboard is empty.'
                     );
+
                     return;
                 }
 
@@ -237,9 +236,12 @@ export function activate(
                             {
                                 label:
                                     'Keep existing files',
+
                                 description:
                                     'Existing files will not be modified.',
-                                mode: 'skip' as const
+
+                                mode:
+                                    'skip' as const
                             }
                         ],
                         {
@@ -252,6 +254,7 @@ export function activate(
                     vscode.window.showInformationMessage(
                         'FileForge: Import cancelled.'
                     );
+
                     return;
                 }
 
@@ -268,29 +271,27 @@ export function activate(
                     vscode.window.showInformationMessage(
                         'FileForge: Import cancelled.'
                     );
+
                     return;
                 }
 
                 const finalConfirmation =
                     await vscode.window.showWarningMessage(
-                        [
-                            'FileForge import summary:',
-                            '',
-                            `• ${preview.create.length} item(s) will be created`,
-                            `• ${resultFilesWithContentCount(parsed)} file(s) contain imported content`,
-                            `• ${resultFilesWithoutContentCount(parsed)} file(s) have no imported content`,
-                            `• ${preview.existing.length} existing item(s) will remain unchanged`
-                        ].join('\n'),
+                        `FileForge will create ${preview.create.length} item(s). Existing files will remain unchanged.`,
                         {
                             modal: true
                         },
                         'Create'
                     );
 
-                if (finalConfirmation !== 'Create') {
+                if (
+                    finalConfirmation !==
+                    'Create'
+                ) {
                     vscode.window.showInformationMessage(
                         'FileForge: Import cancelled.'
                     );
+
                     return;
                 }
 
@@ -367,80 +368,6 @@ export function activate(
         copyJsonWithContentCommand,
         importCommand
     );
-}
-
-function resultFilesWithContentCount(
-    root: {
-        type: 'file' | 'directory';
-        content?: string;
-        contentStatus?: string;
-        children?: unknown[];
-    }
-): number {
-    let count = 0;
-
-    function visit(node: typeof root): void {
-        if (
-            node.type === 'file' &&
-            (
-                node.contentStatus === 'available' ||
-                (
-                    node.contentStatus === undefined &&
-                    node.content !== undefined
-                )
-            )
-        ) {
-            count++;
-        }
-
-        for (
-            const child of node.children ?? []
-        ) {
-            visit(
-                child as typeof root
-            );
-        }
-    }
-
-    visit(root);
-
-    return count;
-}
-
-function resultFilesWithoutContentCount(
-    root: {
-        type: 'file' | 'directory';
-        content?: string;
-        contentStatus?: string;
-        children?: unknown[];
-    }
-): number {
-    let count = 0;
-
-    function visit(node: typeof root): void {
-        if (
-            node.type === 'file' &&
-            (
-                node.contentStatus === 'redacted' ||
-                node.contentStatus === 'binary' ||
-                node.contentStatus === 'too-large'
-            )
-        ) {
-            count++;
-        }
-
-        for (
-            const child of node.children ?? []
-        ) {
-            visit(
-                child as typeof root
-            );
-        }
-    }
-
-    visit(root);
-
-    return count;
 }
 
 export function deactivate() {}
