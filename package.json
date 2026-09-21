@@ -14,22 +14,26 @@
   "contributes": {
     "commands": [
       {
-        "command": "fileforge.scanWorkspace",
-        "title": "FileForge: Scan Workspace"
+          "command": "fileforge.scanWorkspace",
+          "title": "FileForge: Scan Workspace"
       },
       {
-        "command": "fileforge.copyStructure",
-        "title": "FileForge: Copy File Structure"
+          "command": "fileforge.copyStructure",
+          "title": "FileForge: Copy Structure"
       },
       {
-        "command": "fileforge.testParser",
-        "title": "FileForge: Test Parser"
+          "command": "fileforge.testParser",
+          "title": "FileForge: Test Parser"
       },
       {
-        "command": "fileforge.importStructure",
-        "title": "FileForge: Import File Structure"
+          "command": "fileforge.importStructure",
+          "title": "FileForge: Import Structure"
+      },
+      {
+          "command": "fileforge.copyJsonWithContent",
+          "title": "FileForge: Copy JSON With Content"
       }
-    ],
+  ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -50,25 +54,55 @@
     "configuration": {
       "title": "FileForge",
       "properties": {
-        "fileforge.ignoreDirectories": {
-          "type": "array",
-          "items": {
-            "type": "string"
+          "fileforge.ignoreDirectories": {
+              "type": "array",
+              "items": {
+                  "type": "string"
+              },
+              "default": [
+                  "node_modules",
+                  ".git",
+                  "dist",
+                  "build",
+                  "coverage",
+                  ".next",
+                  ".nuxt",
+                  ".vscode",
+                  "bin",
+                  "obj"
+              ],
+              "description": "Directory names excluded when scanning a workspace."
           },
-          "default": [
-            "node_modules",
-            ".git",
-            "dist",
-            "build",
-            "coverage",
-            ".next",
-            ".nuxt",
-            ".vscode",
-            "bin",
-            "obj"
-          ],
-          "description": "Directory names excluded when scanning a workspace."
-        }
+          "fileforge.sensitiveFiles": {
+              "type": "array",
+              "items": {
+                  "type": "string"
+              },
+              "default": [
+                  ".env",
+                  ".env.local",
+                  ".env.development",
+                  ".env.production",
+                  ".env.test",
+                  "credentials.json",
+                  "secrets.json",
+                  "service-account.json",
+                  "id_rsa",
+                  "id_rsa.pub",
+                  "id_dsa",
+                  "id_ecdsa",
+                  "id_ed25519",
+                  "private.key",
+                  "private.pem"
+              ],
+              "description": "File names whose contents are redacted when exporting JSON with file contents."
+          },
+          "fileforge.maxContentFileSize": {
+              "type": "number",
+              "default": 1048576,
+              "minimum": 0,
+              "description": "Maximum file size in bytes whose contents can be exported as JSON. Files larger than this limit are not exported."
+          }
       }
     }
   },

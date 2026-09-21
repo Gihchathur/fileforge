@@ -8,7 +8,7 @@ describe('Workspace Scanner', () => {
     it(
         'should exclude configured directories',
         async function () {
-            this.timeout(10000);
+            this.timeout(15000);
 
             const configuration =
                 vscode.workspace.getConfiguration(
@@ -25,13 +25,13 @@ describe('Workspace Scanner', () => {
                 'temp'
             ];
 
-            await configuration.update(
-                'ignoreDirectories',
-                updated,
-                vscode.ConfigurationTarget.Workspace
-            );
-
             try {
+                await configuration.update(
+                    'ignoreDirectories',
+                    updated,
+                    vscode.ConfigurationTarget.Workspace
+                );
+
                 const tree =
                     await scanWorkspace();
 

@@ -52,10 +52,27 @@ function isTreeNode(
             return false;
         }
 
+        if (node.content !== undefined) {
+            return false;
+        }
+
         return (node.children ?? []).every(
             child => isTreeNode(child)
         );
     }
+
+    if (node.children !== undefined) {
+        return false;
+    }
+
+    if (
+        node.content !== undefined &&
+        typeof node.content !== 'string'
+    ) {
+        return false;
+    }
+
+    return true;
 
     return node.children === undefined;
 }

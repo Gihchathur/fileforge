@@ -5,7 +5,8 @@ import { PreviewResult } from '../tree/preview';
 export function showImportPreview(
     context: vscode.ExtensionContext,
     root: TreeNode,
-    preview: PreviewResult
+    preview: PreviewResult,
+    conflictMode: 'skip' | 'overwrite'
 ): Promise<boolean> {
     return new Promise(resolve => {
         let completed = false;
@@ -21,7 +22,8 @@ export function showImportPreview(
 
         panel.webview.html = getHtml(
             root,
-            preview
+            preview,
+            conflictMode
         );
 
         const disposable =
@@ -61,9 +63,19 @@ export function showImportPreview(
 
 function getHtml(
     root: TreeNode,
-    preview: PreviewResult
+    preview: PreviewResult,
+    conflictMode: 'skip' | 'overwrite'
 ): string {
-    const treeHtml = renderTree(root, preview);
+    const treeHtml = renderTree(
+        root,
+        preview,
+        conflictMode
+    );
+
+    const conflictDescription =
+        conflictMode === 'skip'
+            ? 'Existing files will be kept unchanged.'
+            : 'Existing files will be overwritten.';
 
     return `
 <!DOCTYPE html>
@@ -172,12 +184,39 @@ button {
 .existing .status {
     color: var(--vscode-descriptionForeground);
 }
+
+.overwrite .status {
+    color: var(--vscode-testing-iconFailed);
+}
+
+.conflict-mode {
+    padding: 12px 14px;
+    margin: 15px 0;
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 6px;
+}
+
+.conflict-description {
+    margin-top: 5px;
+    color: var(--vscode-descriptionForeground);
+    font-size: 13px;
+}
 </style>
 </head>
 
 <body>
 
 <h1>FileForge — Import Preview</h1>
+
+<div class="conflict-mode">
+    <strong>Conflict handling:</strong>
+    ${conflictMode === 'skip'
+        ? 'Skip existing files'
+        : 'Overwrite existing files'}
+    <div class="conflict-description">
+        ${conflictDescription}
+    </div>
+</div>
 
 <div class="summary">
     <div class="summary-item create-summary">
@@ -189,12 +228,23 @@ button {
         </span>
     </div>
 
+    <div class="summary-item create-summary">
+        <span class="summary-count">
+            ${countFilesWithContent(root)}
+        </span>
+        <span>
+            file(s) contain imported content
+        </span>
+    </div>
+
     <div class="summary-item existing-summary">
         <span class="summary-count">
             ${preview.existing.length}
         </span>
         <span>
-            already exist
+            ${conflictMode === 'overwrite'
+                ? 'item(s) will be overwritten'
+                : 'item(s) will be kept'}
         </span>
     </div>
 </div>
@@ -237,6 +287,7 @@ function cancel() {
 function renderTree(
     node: TreeNode,
     preview: PreviewResult,
+    conflictMode: 'skip' | 'overwrite',
     depth = 0,
     parentPath = ''
 ): string {
@@ -257,12 +308,19 @@ function renderTree(
     const statusClass =
         isCreate
             ? 'create'
-            : 'existing';
+            : conflictMode === 'overwrite'
+                ? 'overwrite'
+                : 'existing';
 
     const status =
         isCreate
-            ? 'CREATE'
-            : 'EXISTS';
+            ? node.type === 'file' &&
+            node.content !== undefined
+                ? 'CREATE + CONTENT'
+                : 'CREATE'
+            : conflictMode === 'overwrite'
+                ? 'OVERWRITE'
+                : 'KEEP';
 
     let html = `
         <div class="tree-row ${statusClass}">
@@ -276,6 +334,7 @@ function renderTree(
         html += renderTree(
             child,
             preview,
+            conflictMode,
             depth + 1,
             currentPath
         );
@@ -291,4 +350,27 @@ function escapeHtml(value: string): string {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+function countFilesWithContent(
+    root: TreeNode
+): number {
+    let count = 0;
+
+    function visit(node: TreeNode): void {
+        if (
+            node.type === 'file' &&
+            node.content !== undefined
+        ) {
+            count++;
+        }
+
+        for (const child of node.children ?? []) {
+            visit(child);
+        }
+    }
+
+    visit(root);
+
+    return count;
 }
